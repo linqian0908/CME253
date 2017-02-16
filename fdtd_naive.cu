@@ -1,16 +1,8 @@
-#include "stdio.h"
-#include "math.h"
-#include "stdlib.h"
-#include "time.h"
-
-
-/* macro to index a 1D memory array with 2D indices in column-major order */
-#define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
-#define FJ(n, hx, ht, sigma) 1000*(exp(-pow(((n-0.5)*ht/sigma-4),2))*sin(2*M_PI*(n-0.5)*hx/800/sqrt(2.0)))
-
-// GPU macro
-#define THREADS_PER_BLOCK 256
-typedef float floatT;
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+#include "headers.h"
 
 __global__ void gpu_naive(const int size, const int x, const floatT t, const floatT sigma,
 	const int idx, const int idy, const int k_beg, const int k_end, 
@@ -71,6 +63,12 @@ void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
 }
 
 int main(int argc, char *argv[]) {
+
+	int dev;
+	cudaDeviceProp deviceProp;
+	checkCUDA( cudaGetDevice( &dev ) );
+	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
 	floatT L = 80.0;
 	floatT hx = 1.0;
@@ -89,6 +87,7 @@ int main(int argc, char *argv[]) {
 	size_t num_H = (size - 1)*size;	
 	size_t numbytes_E = num_E*sizeof(floatT);
 	size_t numbytes_H = num_H*sizeof(floatT);
+		
 	fprintf(stdout, "total memory allocated is %lu\n", numbytes_E+2*numbytes_H);
 	
 	clock_t t_begin, t_end;	
@@ -98,8 +97,19 @@ int main(int argc, char *argv[]) {
 	h_Hy = (floatT *) calloc (num_H, sizeof(floatT));
 
 	h_E[INDX(idx, idy, size)] = - FJ(1, hx, ht, sigma);
+	
+	// GPU memory allocation and initialization
+	floatT *d_E, *d_Hx, *d_Hy;
+	checkCUDA( cudaMalloc( (void **) &d_E, numbytes_E ) );
+	checkCUDA( cudaMalloc( (void **) &d_Hx, numbytes_H ) );
+	checkCUDA( cudaMalloc( (void **) &d_Hy, numbytes_H ) );
+
+	checkCUDA( cudaMemcpy(d_E, h_E, numbytes_E, cudaMemcpyHostToDevice) );
+	checkCUDA( cudaMemset(d_Hx, 0, numbytes_H) );
+	checkCUDA( cudaMemset(d_Hy, 0, numbytes_H) );
+	
 	t_end = clock();
-	fprintf(stdout, "CPU memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
+	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
 	int k_beg = 2;
 	int k_end = 1500;
@@ -109,15 +119,7 @@ int main(int argc, char *argv[]) {
 	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	
-	// GPU memory allocation and initialization
-	floatT *d_E, *d_Hx, *d_Hy;
-	cudaMalloc( (void **) &d_E, numbytes_E );
-	cudaMalloc( (void **) &d_Hx, numbytes_H );
-	cudaMalloc( (void **) &d_Hy, numbytes_H );
-
-	cudaMemcpy(d_E, h_E, numbytes_E, cudaMemcpyHostToDevice);
-	cudaMemset(d_Hx, 0, numbytes_H);
-	cudaMemset(d_Hy, 0, numbytes_H);
+	// GPU execution
 	
 	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
 	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
@@ -130,7 +132,8 @@ int main(int argc, char *argv[]) {
 
 	/* launch the kernel on the GPU */
 	gpu_naive<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k_beg, k_end, d_E, d_Hx, d_Hy );
-
+	checkKERNEL();
+	
 	/* stop the timers */
 	cudaEventRecord( stop, 0 );
 	cudaEventSynchronize( stop );
@@ -144,9 +147,9 @@ int main(int argc, char *argv[]) {
 	out_Hx = (floatT *) malloc (numbytes_H);
 	out_Hy = (floatT *) malloc (numbytes_H);
 
-	cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost );
-	cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost );
-	cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost );
+	checkCUDA( cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost ) );
+	checkCUDA( cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost ) );
+	checkCUDA( cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost ) );
 
 	int success = 1;
 	floatT diff, thresh=1e-6;
