@@ -13,26 +13,21 @@ __global__ void gpu_naive(const int size, const int x, const floatT t, const flo
 	floatT *e, floatT *hx, floatT *hy) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
-	floatT temp;
 	
 	for (int k=k_beg; k<=k_end; k++) {
 		if (i>0 && i<(size-1) && j>0 && j<(size-1)) {
-			temp = e[INDX(i,j,size)] + (hy[INDX(i,j,size-1)] - hy[INDX(i-1,j,size-1)])
-				- (hx[INDX(i,j,size)] - hx[INDX(i,j-1,size)]);
+			e[INDX(i,j,size)] += (hy[INDX(i,j,size-1)]-hy[INDX(i-1,j,size-1)])- (hx[INDX(i,j,size)]-hx[INDX(i,j-1,size)]);
 			if (i==idx && j==idy) {
-				temp -= FJ(k, x, t, sigma);
+				e[INDX(i,j,size)] -= FJ(k, x, t, sigma);
 			}
-			e[INDX(i,j,size)] = temp;
 		}
 		__syncthreads();
 
 		if (i<(size-1) && j<size) {
-			temp = hy[INDX(i,j,size-1)] + 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
-			hy[INDX(i,j,size-1)] = temp;			
+			hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
 		}
 		if (i<size && j<size-1) {
-			temp = hx[INDX(i, j, size)] - 0.5 * (e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
-			hx[INDX(i, j, size)] = temp;
+			hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
 		}
 		__syncthreads();
 	}
@@ -74,16 +69,17 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 80.0;
-	floatT hx = 1.0;
+	floatT L = 300.0;
+	floatT hx = 20.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
 
 	fprintf(stdout, "fj output is %f\n", FJ(500, hx, ht, sigma));
 
 	int size = int(2*L/hx)+1;
-	int idx = int(1.5*L/hx)+1;
+	int idx = int(1.25*L/hx)+1;
 	int idy = int(L/hx)+1;
+	fprintf(stdout, "size if %d, source is at idx=%d and idy=%d.\n", size, idx, idy);
 
 	floatT *h_E, *h_Hx, *h_Hy;
 
@@ -127,6 +123,7 @@ int main(int argc, char *argv[]) {
 	
 	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
 	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
+	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
 	cudaEvent_t start, stop;
