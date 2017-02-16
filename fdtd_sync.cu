@@ -9,7 +9,7 @@
 typedef float floatT;
 
 __global__ void gpu_e(const int size, const int x, const floatT t, const floatT sigma,
-	const int idx, const int idy, floatT *e, floatT *hx, floatT *hy) {
+	const int idx, const int idy, const int k,  floatT *e, floatT *hx, floatT *hy) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 	
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 80.0;
+	floatT L = 800.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
@@ -129,8 +129,8 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* launch the kernel on the GPU */
-	for (int i=k_beg; i<k_end; i++) {
-		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, d_E, d_Hx, d_Hy );
+	for (int k=k_beg; k<=k_end; k++) {
+		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy );
 		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy );
 		checkKERNEL();
 	}
