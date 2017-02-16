@@ -17,27 +17,26 @@
 ARCH=-arch sm_30
 CUB_INCLUDE=../../../../cub-1.4.1
 NVCC=nvcc
-NVOPTS=-O3 $(ARCH) -DDEBUG
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
 #x.fdtd_cpu: fdtd_cpu.o
-#	$(NVCC) $(NVOPTS) -o x.fdtd_cpu fdtd_cpu.o
+#	$(NVCC) $(ARCH) -o x.fdtd_cpu fdtd_cpu.o
 
 #fdtd_cpu.o: fdtd_cpu.cu
-#	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu
+#	$(NVCC) $(ARCH) -c fdtd_cpu.cu
 
 x.fdtd_naive: fdtd_naive.o
-	$(NVCC) $(NVOPTS) -o x.fdtd_naive fdtd_naive.o
+	$(NVCC) $(ARCH) -o x.fdtd_naive fdtd_naive.o
 
 fdtd_naive.o: fdtd_naive.cu
-	$(NVCC) $(NVOPTS) -c fdtd_naive.cu 
+	$(NVCC) $(ARCH) -c fdtd_naive.cu 
 
 #x.fdtd_smem: fdtd_smem.o
-#	$(NVCC) $(NVOPTS) -o x.fdtd_smem fdtd_smem.o
+#	$(NVCC) $(ARCH) -o x.fdtd_smem fdtd_smem.o
 
 #fdtd_smem.o: fdtd_smem.cu
-#	$(NVCC) $(NVOPTS) -c fdtd_smem.cu 
+#	$(NVCC) $(ARCH) -c fdtd_smem.cu 
 	
 #clean:
 #	rm -rf fdtd_cpu.o x.fdtd_cpu

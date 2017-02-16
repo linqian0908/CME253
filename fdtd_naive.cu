@@ -130,19 +130,19 @@ int main(int argc, char *argv[]) {
 
 	/* GPU timer */
 	cudaEvent_t start, stop;
-	cudaEventCreate( &start );
-	cudaEventCreate( &stop );
-	cudaEventRecord( start, 0 );
+	checkCUDA( cudaEventCreate( &start ) );
+    checkCUDA( cudaEventCreate( &stop ) );
+	checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* launch the kernel on the GPU */
 	gpu_naive<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k_beg, k_end, d_E, d_Hx, d_Hy );
 	checkKERNEL();
 	
 	/* stop the timers */
-	cudaEventRecord( stop, 0 );
-	cudaEventSynchronize( stop );
+	checkCUDA( cudaEventRecord( stop, 0 ) );
+	checkCUDA( cudaEventSynchronize( stop ) );
 	float gpuTime;
-	cudaEventElapsedTime( &gpuTime, start, stop );
+	checkCUDA( cudaEventElapsedTime( &gpuTime, start, stop ) );
 
 	printf("GPU naive calculation time %f ms\n", gpuTime );
 	
@@ -200,11 +200,11 @@ int main(int argc, char *argv[]) {
 	free(out_E);
 	free(out_Hx);
 	free(out_Hy);
-	cudaFree( d_E );
-	cudaFree( d_Hx );
-	cudaFree( d_Hy );
+	checkCUDA( cudaFree( d_E ) );
+	checkCUDA( cudaFree( d_Hx ) );
+	checkCUDA( cudaFree( d_Hy ) );
 
-	cudaDeviceSynchronize();
+	checkCUDA( cudaDeviceSynchronize() );
 	
 	return 0;
 }
