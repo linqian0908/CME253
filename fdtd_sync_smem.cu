@@ -79,16 +79,16 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 800.0;
+	floatT L = 1599.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
 
 	fprintf(stdout, "fj output is %f\n", FJ(500, hx, ht, sigma));
 
-	int size = int(2*L/hx)+1;
-	int idx = int(1.25*L/hx)+1;
-	int idy = int(L/hx)+1;
+	int size = (int) L/hx+1;
+	int idx = (int) (0.625*L/hx)+1;
+	int idy = (int) (0.5*L/hx)+1;
 	fprintf(stdout, "size if %d, source is at idx=%d and idy=%d.\n", size, idx, idy);
 
 	floatT *h_E, *h_Hx, *h_Hy;
