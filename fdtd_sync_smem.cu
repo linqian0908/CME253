@@ -24,14 +24,15 @@ __global__ void gpu_h(const int size, floatT *e, floatT *hx, floatT *hy) {
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 	
 	__shared__ floatT share_e[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+1];
-	if (i>=size && j>=size) return;
+	if (i>=size || j>=size) return;
+	
 	share_e[threadIdx.x][threadIdx.y] = e[INDX(i,j,size)];
 	
 	if (threadIdx.x == THREADS_PER_BLOCK-1) {	
-		share_e[THREADS_PER_BLOCK][threadIdx.y] = (i<(size-1))?e[INDX(i+1,j,size)]:0;
+		share_e[THREADS_PER_BLOCK][threadIdx.y] = (i<(size-1))?e[INDX(i+1,j,size)]:0.0;
 	}
 	if (threadIdx.y == THREADS_PER_BLOCK-1) {
-		share_e[threadIdx.x][THREADS_PER_BLOCK] = (j<(size-1))?e[INDX(i,j+1,size)]:0;
+		share_e[threadIdx.x][THREADS_PER_BLOCK] = (j<(size-1))?e[INDX(i,j+1,size)]:0.0;
 	}
 	__syncthreads();
 	
