@@ -20,11 +20,11 @@ NVCC=nvcc
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
-x.fdtd_sync: fdtd_sync.o
-	$(NVCC) $(ARCH) -o x.fdtd_sync fdtd_sync.o
+x.fdtd_sync_smem: fdtd_sync_smem.o
+	$(NVCC) $(ARCH) -o x.fdtd_sync_smem fdtd_sync_smem.o
 
-fdtd_sync.o: fdtd_sync.cu
-	$(NVCC) $(ARCH) -c fdtd_sync.cu 
+fdtd_sync_smem.o: fdtd_sync_smem.cu
+	$(NVCC) $(ARCH) -c fdtd_sync_smem.cu 
 	
 #clean:
 #	rm -rf fdtd_cpu.o x.fdtd_cpu

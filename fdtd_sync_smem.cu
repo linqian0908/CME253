@@ -23,7 +23,7 @@ __global__ void gpu_h(const int size, floatT *e, floatT *hx, floatT *hy) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	__share__ floatT share_e[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+1];
+	__shared__ floatT share_e[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+1];
 	
 	if (i<size && j<size) {
 		share_e[threadIdx.x][threadIdx.y] = e[INDX(i,j,size)];
@@ -36,10 +36,10 @@ __global__ void gpu_h(const int size, floatT *e, floatT *hx, floatT *hy) {
 		__syncthreads();
 		
 		if (i<(size-1)) {
-			hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
+			hy[INDX(i,j,size-1)] += 0.5*(share_e[threadIdx.x+1][threadIdx.y]-share_e[threadIdx.x][threadIdx.y]);
 		}
 		if (j<(size-1)) {
-			hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
+			hx[INDX(i, j, size)] -= 0.5*(share_e[threadIdx.x][threadIdx.y+1]-share_e[threadIdx.x][threadIdx.y]);
 		}		
 	}
 }
