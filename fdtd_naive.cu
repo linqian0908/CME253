@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 
 	printf("GPU naive calculation time %f ms\n", gpuTime );
 	
-	floatT *out_E, out_Hx, out_Hy;
+	floatT *out_E, *out_Hx, *out_Hy;
 	out_E = (floatT *) malloc (numbytes_E);
 	out_Hx = (floatT *) malloc (numbytes_H);
 	out_Hy = (floatT *) malloc (numbytes_H);
@@ -149,11 +149,11 @@ int main(int argc, char *argv[]) {
 	cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost );
 
 	int success = 1;
-	floatT diff, thresh=1e-12;
+	floatT diff, thresh=1e-9;
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
-			diff = h_E[INDX(i,j,size)]- out_E[INDX(i,j,size)];
-			if ( diff>thresh || diff<-thresh ) {
+			diff = abs(1.0-out_E[INDX(i,j,size)]/h_E[INDX(i,j,size)]);
+			if ( diff>thresh ) {
 				printf("error in E element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
 				break;
@@ -161,30 +161,31 @@ int main(int argc, char *argv[]) {
 		}
 		if (success==0) { break;}
 	} /* end for */
-
+/*
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size-1; j++ ) {
-			diff = h_Hx[INDX(i,j,size)]- out_Hx[INDX(i,j,size)];
-			if ( diff>thresh || diff<-thresh ) {
+			diff = abs(1.0-out_Hx[INDX(i,j,size)]/h_Hx[INDX(i,j,size)]);
+			if ( diff>thresh ) {
 				printf("error in Hx element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
 				break;
-			} /* end if */
+			} 
 		}
 		if (success==0) { break;}
-	} /* end for */
+	} 
 	
 	for( int i = 0; i < size-1; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
-			diff = h_Hy[INDX(i,j,size)]- out_Hy[INDX(i,j,size)];
-			if ( diff>thresh || diff<-thresh ) {
+			diff = abs(1.0-out_Hy[INDX(i,j,size)]/h_Hy[INDX(i,j,size)]);
+			if ( diff>thresh) {
 				printf("error in Hy element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
 				break;
-			} /* end if */
+			} 
 		}
 		if (success==0) { break;}
-	} /* end for */
+	} 
+*/
 	
 	if( success == 1 ) printf("PASS\n");
 	else               printf("FAIL\n");

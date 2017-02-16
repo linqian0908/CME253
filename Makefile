@@ -27,11 +27,11 @@ NVOPTS=-O3 $(ARCH) -DDEBUG
 #fdtd_cpu.o: fdtd_cpu.cu
 #	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu
 
-x.fdtd_naive: fdtd_cpu.o
+x.fdtd_naive: fdtd_naive.o
 	$(NVCC) $(NVOPTS) -o x.fdtd_naive fdtd_naive.o
 
 fdtd_naive.o: fdtd_naive.cu
-	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu 
+	$(NVCC) $(NVOPTS) -c fdtd_naive.cu 
 
 #x.fdtd_smem: fdtd_smem.o
 #	$(NVCC) $(NVOPTS) -o x.fdtd_smem fdtd_smem.o

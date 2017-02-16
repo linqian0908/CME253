@@ -1,3 +1,5 @@
 cpu_E
 cpu_Hx
 cpu_Hy
+*.o
+x.*
