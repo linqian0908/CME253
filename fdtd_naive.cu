@@ -5,7 +5,7 @@
 #include "headers.h"
 
 // GPU macro
-#define THREADS_PER_BLOCK 256
+#define THREADS_PER_BLOCK 32
 typedef float floatT;
 
 __global__ void gpu_naive(const int size, const int x, const floatT t, const floatT sigma,
@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
 			if ( diff>thresh ) {
 				printf("error in E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
+				break;
 			}
 		}
 	} 
@@ -173,6 +174,7 @@ int main(int argc, char *argv[]) {
 			if ( diff>thresh ) {
 				printf("error in Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
 				success = 0;
+				break;
 			} 
 		}
 	} 
@@ -183,6 +185,7 @@ int main(int argc, char *argv[]) {
 			if ( diff>thresh) {
 				printf("error in Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size)],out_Hy[INDX(i,j,size)] );
 				success = 0;
+				break;
 			} 
 		}
 	} 
