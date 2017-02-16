@@ -72,7 +72,7 @@ void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
 
 int main(int argc, char *argv[]) {
 	
-	floatT L = 800.0;
+	floatT L = 80.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
@@ -149,43 +149,37 @@ int main(int argc, char *argv[]) {
 	cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost );
 
 	int success = 1;
-	floatT diff, thresh=1e-9;
+	floatT diff, thresh=1e-6;
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
 			diff = abs(1.0-out_E[INDX(i,j,size)]/h_E[INDX(i,j,size)]);
 			if ( diff>thresh ) {
-				printf("error in E element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+				printf("error in E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
-				break;
-			} /* end if */
+			}
 		}
-		if (success==0) { break;}
-	} /* end for */
-/*
+	} 
+
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size-1; j++ ) {
 			diff = abs(1.0-out_Hx[INDX(i,j,size)]/h_Hx[INDX(i,j,size)]);
 			if ( diff>thresh ) {
-				printf("error in Hx element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+				printf("error in Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
 				success = 0;
-				break;
 			} 
 		}
-		if (success==0) { break;}
 	} 
 	
 	for( int i = 0; i < size-1; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
 			diff = abs(1.0-out_Hy[INDX(i,j,size)]/h_Hy[INDX(i,j,size)]);
 			if ( diff>thresh) {
-				printf("error in Hy element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+				printf("error in Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size)],out_Hy[INDX(i,j,size)] );
 				success = 0;
-				break;
 			} 
 		}
-		if (success==0) { break;}
 	} 
-*/
+
 	
 	if( success == 1 ) printf("PASS\n");
 	else               printf("FAIL\n");
