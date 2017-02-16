@@ -1,13 +1,13 @@
-#include "stdio.h"
-#include "math.h"
-#include "stdlib.h"
-#include "time.h"
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
 
 
 /* macro to index a 1D memory array with 2D indices in column-major order */
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 #define FJ(n, hx, ht, sigma) 1000*(exp(-pow(((n-0.5)*ht/sigma-4),2))*sin(2*M_PI*(n-0.5)*hx/800/sqrt(2.0)))
-typedef float floatT;
+typedef double floatT;
 
 void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
     const int idx, const int idy, const int k_beg, const int k_end, 
@@ -74,17 +74,17 @@ int main(int argc, char *argv[]) {
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
 	FILE *fp;
-	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_E","wb");
+	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_E.d","wb");
 	fwrite(h_E,sizeof(floatT),num_E,fp);
 	fclose(fp);
 	fprintf(stdout, "finish writing E.\n");
 	
-	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_Hx","wb");
+	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_Hx.d","wb");
 	fwrite(h_Hx,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish writing Hx.\n");
 	
-	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_Hy","wb");
+	fp = fopen("/home/linqian/Desktop/2017Winter/CME253/project/code/cpu_Hy.d","wb");
 	fwrite(h_Hy,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish writing Hy.\n");

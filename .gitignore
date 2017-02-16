@@ -1,5 +1,5 @@
-cpu_E
-cpu_Hx
-cpu_Hy
+cpu_E*
+cpu_Hx*
+cpu_Hy*
 *.o
 x.*
