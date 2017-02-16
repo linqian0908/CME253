@@ -21,7 +21,7 @@ __global__ void gpu_naive(const int size, const int x, const floatT t, const flo
 				e[INDX(i,j,size)] -= FJ(k, x, t, sigma);
 			}
 		}
-		__syncthreads();
+		__threadfence();
 
 		if (i<(size-1) && j<size) {
 			hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
@@ -29,7 +29,7 @@ __global__ void gpu_naive(const int size, const int x, const floatT t, const flo
 		if (i<size && j<size-1) {
 			hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
 		}
-		__syncthreads();
+		__threadfence();
 	}
 		
 }
@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 300.0;
-	floatT hx = 20.0;
+	floatT L = 80.0;
+	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
 
