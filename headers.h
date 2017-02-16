@@ -13,7 +13,3 @@
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 #define FJ(n, hx, ht, sigma) 1000*(exp(-pow(((n-0.5)*ht/sigma-4),2))*sin(2*M_PI*(n-0.5)*hx/800/sqrt(2.0)))
 
-// GPU macro
-#define THREADS_PER_BLOCK 256
-typedef float floatT;
-

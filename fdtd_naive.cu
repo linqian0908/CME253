@@ -4,6 +4,10 @@
 #include <time.h>
 #include "headers.h"
 
+// GPU macro
+#define THREADS_PER_BLOCK 256
+typedef float floatT;
+
 __global__ void gpu_naive(const int size, const int x, const floatT t, const floatT sigma,
 	const int idx, const int idy, const int k_beg, const int k_end, 
 	floatT *e, floatT *hx, floatT *hy) {
