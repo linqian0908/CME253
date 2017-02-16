@@ -112,7 +112,23 @@ int main(int argc, char *argv[]) {
 	int k_end = 1500;
 	
 	t_begin = clock();
-	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	FILE *fp;
+	fp = fopen("./cpu_E.f","rb");
+	fread(h_E,sizeof(floatT),num_E,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading E.\n");
+	
+	fp = fopen("./cpu_Hx.f","rb");
+	fread(h_Hx,sizeof(floatT),num_H,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading Hx.\n");
+	
+	fp = fopen("./cpu_Hy.f","rb");
+	fread(h_Hy,sizeof(floatT),num_H,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading Hy.\n");
+	
 	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	

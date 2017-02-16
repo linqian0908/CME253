@@ -141,8 +141,8 @@ int main(int argc, char *argv[]) {
 	fread(h_Hy,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish reading Hy.\n");
-	t_end = clock();
 	
+	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	
 	// GPU execution
