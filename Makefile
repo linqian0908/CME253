@@ -21,17 +21,17 @@ NVOPTS=-O3 $(ARCH) -DDEBUG
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
-x.fdtd_cpu: fdtd_cpu.o
-	$(NVCC) $(NVOPTS) -o x.fdtd_cpu fdtd_cpu.o
+#x.fdtd_cpu: fdtd_cpu.o
+#	$(NVCC) $(NVOPTS) -o x.fdtd_cpu fdtd_cpu.o
 
-fdtd_cpu.o: fdtd_cpu.cu
-	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu
+#fdtd_cpu.o: fdtd_cpu.cu
+#	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu
 
-#x.fdtd_naive: fdtd_cpu.o
-#	$(NVCC) $(NVOPTS) -o x.fdtd_naive fdtd_naive.o
+x.fdtd_naive: fdtd_cpu.o
+	$(NVCC) $(NVOPTS) -o x.fdtd_naive fdtd_naive.o
 
-#fdtd_naive.o: fdtd_naive.cu
-#	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu 
+fdtd_naive.o: fdtd_naive.cu
+	$(NVCC) $(NVOPTS) -c fdtd_cpu.cu 
 
 #x.fdtd_smem: fdtd_smem.o
 #	$(NVCC) $(NVOPTS) -o x.fdtd_smem fdtd_smem.o
@@ -39,5 +39,5 @@ fdtd_cpu.o: fdtd_cpu.cu
 #fdtd_smem.o: fdtd_smem.cu
 #	$(NVCC) $(NVOPTS) -c fdtd_smem.cu 
 	
-clean:
-	rm -rf fdtd_cpu.o x.fdtd_cpu
+#clean:
+#	rm -rf fdtd_cpu.o x.fdtd_cpu
