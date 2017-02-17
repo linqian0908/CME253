@@ -11,45 +11,38 @@
 #define N_BLOCKS 8
 typedef float floatT;
 
-__device__ int g_mutex;
-
-__device__ void __gpu_sync() {
-	int a;
-	if (threadIdx.x==0) {
-		atomicAdd(&g_mutex,1);
-		while (g_mutex!=N_BLOCKS) { a=N_BLOCKS; }
-	}
-	__syncthreads();
-}
-
-__global__ void gpu_eh(const int size, const int x, const floatT t, const floatT sigma,
-	const int idx, const int idy, const int k_beg, int k_end,  floatT *e, floatT *hx, floatT *hy) {
+__global__ void gpu_e(const int size, const int x, const floatT t, const floatT sigma,
+	const int idx, const int idy, const int k,  floatT *e, floatT *hx, floatT *hy) {
 	__shared__ char dummy[40000];
-	__device__ int g_mutex;
-	
 	int i_base = threadIdx.x;
 	int chunk = (size-1)/gridDim.x+1;
 	int j_base = blockIdx.x*chunk;
-	
-	for (int k=k_beg; k<=k_end; k+=1) {
-	
-		for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
-			for (int i = i_base; i<(size-1); i+=blockDim.x) {
-				if (i>0 && j>0) {
-					e[INDX(i,j,size)] += (hy[INDX(i,j,size-1)]-hy[INDX(i-1,j,size-1)])- (hx[INDX(i,j,size)]-hx[INDX(i,j-1,size)]);
-					if (i==idx && j==idy) { e[INDX(i,j,size)] -= FJ(k, x, t, sigma); }
-				}
+	//int j_base = blockIdx.x;
+
+	for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
+	//for (int j = j_base; j<(size-1); j+=gridDim.x) {
+		for (int i = i_base; i<(size-1); i+=blockDim.x) {
+			if (i>0 && j>0) {
+				e[INDX(i,j,size)] += (hy[INDX(i,j,size-1)]-hy[INDX(i-1,j,size-1)])- (hx[INDX(i,j,size)]-hx[INDX(i,j-1,size)]);
+				if (i==idx && j==idy) { e[INDX(i,j,size)] -= FJ(k, x, t, sigma); }
 			}
 		}
-		__gpu_sync();
-		
-		for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
-			for (int i = i_base; i<(size-1); i+=blockDim.x) {
-				hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
-				hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
-			}
+	}
+}
+
+__global__ void gpu_h(const int size, floatT *e, floatT *hx, floatT *hy) {
+	__shared__ char dummy[40000];
+	int i_base = threadIdx.x;
+	int chunk = (size-1)/gridDim.x+1;
+	int j_base = blockIdx.x*chunk;
+	//int j_base = blockIdx.x;
+
+	for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
+	//for (int j = j_base; j<(size-1); j+=gridDim.x) {
+		for (int i = i_base; i<(size-1); i+=blockDim.x) {
+			hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
+			hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
 		}
-		__gpu_sync();
 	}
 }
 
@@ -169,10 +162,11 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* launch the kernel on the GPU */
-
-	gpu_eh<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k_beg, k_end, d_E, d_Hx, d_Hy );
-	checkKERNEL();
-
+	for (int k=k_beg; k<=k_end; k++) {
+		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy );
+		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy );
+		checkKERNEL();
+	}
 	
 	/* stop the timers */
 	checkCUDA( cudaEventRecord( stop, 0 ) );
