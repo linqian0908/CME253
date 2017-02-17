@@ -38,7 +38,7 @@ void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
 
 int main(int argc, char *argv[]) {
 	
-	floatT L = 1599.0;
+	floatT L = 1598.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;

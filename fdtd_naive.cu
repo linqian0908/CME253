@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 159.0;
+	floatT L = 158.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
