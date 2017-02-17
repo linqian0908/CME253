@@ -35,10 +35,10 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 		s_hy[threadIdx.x+1][threadIdx.y+1] = hy[INDX(i,j+1,size-1)];
 	}
 	if (threadIdx.y==0 && j>0) {
-		s_hx[threadIdx.x+1][0] = hx[INDX(i,j-1,size)];
+		s_hx[threadIdx.x][0] = hx[INDX(i,j-1,size)];
 	}
 	if (threadIdx.x==0 && i>0) {
-		s_hy[0][threadIdx.y+1] = hy[INDX(i-1,j,size-1)];
+		s_hy[0][threadIdx.y] = hy[INDX(i-1,j,size-1)];
 	}
 	
 	// compute update in shared memory
