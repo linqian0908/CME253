@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
 	h_Hx = (floatT *) calloc (num_H, sizeof(floatT));
 	h_Hy = (floatT *) calloc (num_H, sizeof(floatT));
 
-	h_E[INDX(idx, idy, size)] = - FJ(1, hx, ht, sigma);
+	h_E[INDX(idx, idy, size)] = - FJ(500, hx, ht, sigma);
 	
 	// GPU memory allocation and initialization
 	floatT *d_E, *d_Hx, *d_Hy;
@@ -182,8 +182,8 @@ int main(int argc, char *argv[]) {
 	t_end = clock();
 	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
-	int k_beg = 2;
-	int k_end = 2; //1500;
+	int k_beg = 501;
+	int k_end = 501; //1500;
 	
 	t_begin = clock();
 	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
@@ -244,19 +244,25 @@ int main(int argc, char *argv[]) {
 	
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
-			printf("E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+			if (abs(h_E[INDX(i,j,size)])>0 || abs(out_E[INDX(i,j,size)])>0) {
+				printf("E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+			}
 		}
 	}
 	
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size-1; j++ ) {
-			printf("Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
+			if (abs(h_Hx[INDX(i,j,size)])>0 || abs(out_Hx[INDX(i,j,size)])>0) {
+				printf("Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
+			}
 		}
 	} 
 	
-	for( int i = 0; i < size-1; i++ )	{
+	for( int i = 0; i < size-1; i++ ) {
 		for ( int j = 0; j<size; j++ ) {
-			printf("Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size-1)],out_E[INDX(i,j,size-1)] );
+			if (abs(h_Hy[INDX(i,j,size-1)])>0 || abs(out_Hy[INDX(i,j,size-1)])>0) {
+				printf("Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size-1)],out_Hy[INDX(i,j,size-1)] );
+			}
 		}
 	} 
 
