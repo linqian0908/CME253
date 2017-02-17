@@ -13,11 +13,11 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if (i>=(size-1) || j>=(size-1)) { return; }
-	
 	__shared__ floatT s_e[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+1];
 	__shared__ floatT s_hx[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+2];
 	__shared__ floatT s_hy[THREADS_PER_BLOCK+2][THREADS_PER_BLOCK+1];
+	
+	if (i>=(size-1) || j>=(size-1)) { return; }
 	
 	// read interior data for each threadblock from global memory
 	s_e[threadIdx.x][threadIdx.y] = e[INDX(i,j,size)];
@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 1598.0;
-	floatT hx = 1.0;
+	floatT L = 200.0;//1598.0;
+	floatT hx = 10.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
 
@@ -147,10 +147,11 @@ int main(int argc, char *argv[]) {
 	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
 	int k_beg = 2;
-	int k_end = 1500;
+	int k_end = 2; //1500;
 	
 	t_begin = clock();
-	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	/*
 	FILE *fp;
 	fp = fopen("./cpu_E.f","rb");
 	fread(h_E,sizeof(floatT),num_E,fp);
@@ -166,7 +167,7 @@ int main(int argc, char *argv[]) {
 	fread(h_Hy,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish reading Hy.\n");
-	
+	*/
 	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	
@@ -204,8 +205,26 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost ) );
 	checkCUDA( cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost ) );
 	checkCUDA( cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost ) );
+	
+	for( int i = 0; i < size; i++ )	{
+		for ( int j = 0; j<size; j++ ) {
+			printf("E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+		}
+	}
+	
+	for( int i = 0; i < size; i++ )	{
+		for ( int j = 0; j<size-1; j++ ) {
+			printf("Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
+		}
+	} 
+	
+	for( int i = 0; i < size-1; i++ )	{
+		for ( int j = 0; j<size; j++ ) {
+			printf("Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size-1)],out_E[INDX(i,j,size-1)] );
+		}
+	} 
 
-	int success = 1;
+/*	int success = 1;
 	floatT diff, thresh=1e-6;
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
@@ -242,7 +261,7 @@ int main(int argc, char *argv[]) {
 
 	
 	if( success == 1 ) printf("PASS\n");
-	else               printf("FAIL\n");
+	else               printf("FAIL\n");*/
 
 	free(h_E);
 	free(h_Hx);
