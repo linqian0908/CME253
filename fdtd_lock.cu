@@ -30,9 +30,10 @@ __global__ void gpu_e(const int size, const int x, const floatT t, const floatT 
 __global__ void gpu_h(const int size, floatT *e, floatT *hx, floatT *hy) {
 	__shared__ char dummy[40000];
 	int i_base = threadIdx.x;
-	int j_base = blockIdx.x;
+	int chunk = (size-1)/blockDim.x+1;
+	int j_base = blockIdx.x*chunk;
 	
-	for (int j = j_base; j<(size-1); j+=gridDim.x) {
+	for (int j = j_base; j<min(size,j_base+chunk); j+=1) {
 		for (int i = i_base; i<(size-1); i+=blockDim.x) {
 			hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
 			hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
