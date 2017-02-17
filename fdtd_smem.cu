@@ -1,329 +1,250 @@
-#include "stdio.h"
-#include "math.h"
-#include "stdlib.h"
-#include "time.h"
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+#include "headers.h"
 
-/* macro to index a 1D memory array with 2D indices in column-major order */
-#define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
-#define FJ(n, hx, ht, sigma) (exp(-pow(((n-0.5)*ht/sigma-4),2))*sin(2*M_PI*(n-0.5)*hx/800/sqrt(2.0)))
+// GPU macro
+#define THREADS_PER_BLOCK 32
+typedef float floatT;
 
-#define THREADS_PER_BLOCK_X 16
-#define THREADS_PER_BLOCK_Y 16
-// #define RADIUS 1
-
-__global__ void gpu_fdtd_shmem(const int size, const int x, const double t, const double sigma,
-    const int idx, const int idy, const double e_0,
-	const int k_beg, const int k_end, double *e, double *hx, double *hy) {
-	// printf("Hello from block %d, thread %d\n", blockIdx.x, threadIdx.x);
-
-    
-	__shared__ double share_e[THREADS_PER_BLOCK_X + 2][THREADS_PER_BLOCK_Y + 2];
-	__shared__ double share_hx[THREADS_PER_BLOCK_X + 2][THREADS_PER_BLOCK_Y + 2];
-	__shared__ double share_hy[THREADS_PER_BLOCK_X + 2][THREADS_PER_BLOCK_Y + 2];
-
-	int globalIndex_x = blockIdx.x * blockDim.x + threadIdx.x;
-	int localIndex_x = threadIdx.x + 1;
-
-	int globalIndex_y = blockIdx.y * blockDim.y + threadIdx.y;
-	int localIndex_y = threadIdx.y + 1;
-
-	for (int k = k_beg; k <= k_end; k++) {
-	// int k = k_beg;
-
-		share_e[localIndex_x][localIndex_y] = e[INDX(globalIndex_x, globalIndex_y, size)];
-		share_hx[localIndex_x][localIndex_y] = hx[INDX(globalIndex_x, globalIndex_y, size)];
-		share_hy[localIndex_x][localIndex_y] = hy[INDX(globalIndex_x, globalIndex_y, size-1)];
-
-		if (threadIdx.x < 1 && globalIndex_x >= 1) {
-
-			share_e[localIndex_x - 1][localIndex_y] = e[INDX(globalIndex_x - 1, globalIndex_y, size)];
-			share_hx[localIndex_x - 1][localIndex_y] = hx[INDX(globalIndex_x - 1 , globalIndex_y, size)];
-			share_hy[localIndex_x - 1][localIndex_y] = hy[INDX(globalIndex_x - 1 , globalIndex_y, size-1)];
-			//printf("threadIdx.x: %d, globalIndex_x: %d, threadIdx.y: %d, globalIndex_y: %d, e: %e, share_e: %e\n", 
-			//	threadIdx.x, globalIndex_x,threadIdx.y, globalIndex_y, e[INDX(globalIndex_x - 1, globalIndex_y, size)], share_e[localIndex_x - 1][localIndex_y]);
-		}
-
-		if (threadIdx.x < 1 && (globalIndex_x + THREADS_PER_BLOCK_X) < size){
-		// if (threadIdx.x < 1 && globalIndex_x < (size - 1)){
-			share_e[THREADS_PER_BLOCK_X + 1][localIndex_y] = e[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y, size)];
-			share_hx[THREADS_PER_BLOCK_X + 1][localIndex_y] = hx[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y, size)];
-			share_hy[THREADS_PER_BLOCK_X + 1][localIndex_y] = hy[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y, size-1)];
-		}
-
-		if (threadIdx.y < 1 && globalIndex_y >= 1) {
-			share_e[localIndex_x][localIndex_y - 1] = e[INDX(globalIndex_x, globalIndex_y - 1, size)];
-			share_hx[localIndex_x][localIndex_y - 1] = hx[INDX(globalIndex_x, globalIndex_y - 1, size)];
-			share_hy[localIndex_x][localIndex_y - 1] = hy[INDX(globalIndex_x, globalIndex_y - 1, size-1)];
-		}
-
-		if (threadIdx.y < 1 && (globalIndex_y + THREADS_PER_BLOCK_Y) < size) {
-		// if (threadIdx.y < 1 && globalIndex_y < (size - 1)) {
-			share_e[localIndex_x][THREADS_PER_BLOCK_Y + 1] = e[INDX(globalIndex_x, globalIndex_y + THREADS_PER_BLOCK_Y, size)];
-			share_hx[localIndex_x][THREADS_PER_BLOCK_Y + 1] = hx[INDX(globalIndex_x, globalIndex_y + THREADS_PER_BLOCK_Y, size)];
-			share_hy[localIndex_x][THREADS_PER_BLOCK_Y + 1] = hy[INDX(globalIndex_x, globalIndex_y + THREADS_PER_BLOCK_Y, size - 1)];
-		}
-
-		if (threadIdx.x < 1 && (globalIndex_x + THREADS_PER_BLOCK_X) < size && threadIdx.y < 1 && (globalIndex_y + THREADS_PER_BLOCK_Y) < size){
-			share_e[THREADS_PER_BLOCK_X + 1][THREADS_PER_BLOCK_Y + 1] = e[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y + THREADS_PER_BLOCK_Y, size)];
-			share_hx[THREADS_PER_BLOCK_X + 1][THREADS_PER_BLOCK_Y + 1] = hx[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y + THREADS_PER_BLOCK_Y, size)];
-			share_hy[THREADS_PER_BLOCK_X + 1][THREADS_PER_BLOCK_Y + 1] = hy[INDX(globalIndex_x + THREADS_PER_BLOCK_X, globalIndex_y + THREADS_PER_BLOCK_Y, size-1)];
-		}	
-
-		if (threadIdx.x < 1 && globalIndex_x >= 1 && threadIdx.y < 1 && globalIndex_y >= 1) {
-			share_e[0][0] = e[INDX(globalIndex_x - 1, globalIndex_y - 1, size)];
-			share_hx[0][0] = hx[INDX(globalIndex_x - 1, globalIndex_y - 1, size)];
-			share_hy[0][0] = hy[INDX(globalIndex_x - 1, globalIndex_y - 1, size)];
-		}
-
-		__syncthreads();
-
-		if (globalIndex_x > 0 && globalIndex_x < (size-1) && globalIndex_y > 0 && globalIndex_y < (size-1)) {
-			share_e[localIndex_x][localIndex_y] = share_e[localIndex_x][localIndex_y]
-			 + (share_hy[localIndex_x][localIndex_y] - share_hy[localIndex_x-1][localIndex_y])
-				- (share_hx[localIndex_x][localIndex_y] - share_hx[localIndex_x][localIndex_y - 1]);
-
-
-			if ((globalIndex_x) == idx && (globalIndex_y) == idy) {
-				printf ("globalIndex_x: %d, globalIndex_y: %d, share_e: %e\n", globalIndex_x, globalIndex_y, share_e[localIndex_x][localIndex_y]);
-				share_e[localIndex_x][localIndex_y] -= t/e_0 * FJ(k, x, t, sigma);
-				printf ("globalIndex_x: %d, globalIndex_y: %d, share_e: %e\n", globalIndex_x, globalIndex_y, share_e[localIndex_x][localIndex_y]);
-				// e[INDX(globalIndex_x, globalIndex_y, size)] = share_e[localIndex_x][localIndex_y];	
-			}
-
-
-
-			if (threadIdx.x == (THREADS_PER_BLOCK_X - 1) && globalIndex_x < (size - 2)) {
-				share_e[localIndex_x + 1][localIndex_y] = share_e[localIndex_x + 1][localIndex_y]
-				 + (share_hy[localIndex_x + 1][localIndex_y] - share_hy[localIndex_x][localIndex_y])
-					- (share_hx[localIndex_x + 1][localIndex_y] - share_hx[localIndex_x + 1][localIndex_y - 1]);
-
-				if ((globalIndex_x + 1) == idx && (globalIndex_y) == idy) {
-					share_e[localIndex_x + 1][localIndex_y] -= t/e_0 * FJ(k, x, t, sigma);
-				}	
-			}
-
-				
-
-			if (threadIdx.y == (THREADS_PER_BLOCK_Y - 1) && globalIndex_y < (size - 2)) {
-				share_e[localIndex_x][localIndex_y + 1] = share_e[localIndex_x][localIndex_y + 1]
-				 + (share_hy[localIndex_x][localIndex_y + 1] - share_hy[localIndex_x-1][localIndex_y + 1])
-					- (share_hx[localIndex_x][localIndex_y + 1] - share_hx[localIndex_x][localIndex_y]);
-
-				if ((globalIndex_x) == idx && (globalIndex_y + 1) == idy) {
-					share_e[localIndex_x][localIndex_y + 1] -= t/e_0 * FJ(k, x, t, sigma);
-				}		
-
-			}
-
-			if (threadIdx.x == (THREADS_PER_BLOCK_X - 1) && globalIndex_x < (size - 2) && threadIdx.y == (THREADS_PER_BLOCK_Y - 1) && globalIndex_y < (size - 2)) {
-				share_e[localIndex_x + 1][localIndex_y + 1] = share_e[localIndex_x + 1][localIndex_y + 1]
-				 + (share_hy[localIndex_x + 1][localIndex_y + 1] - share_hy[localIndex_x][localIndex_y + 1])
-					- (share_hx[localIndex_x + 1][localIndex_y + 1] - share_hx[localIndex_x + 1][localIndex_y]);
-
-				if ((globalIndex_x + 1) == idx && (globalIndex_y + 1) == idy) {
-					share_e[localIndex_x + 1][localIndex_y + 1] -= t/e_0 * FJ(k, x, t, sigma);
-				}	
-			}
-
-
-
-
-			e[INDX(globalIndex_x, globalIndex_y, size)] = share_e[localIndex_x][localIndex_y];
-		}
-
-		
-
-		__syncthreads();
-
-		if (globalIndex_x < (size - 1) && globalIndex_y < size) {
-			hy[INDX(globalIndex_x, globalIndex_y, size - 1)] = share_hy[localIndex_x][localIndex_y]
-			+ 0.5 * (share_e[localIndex_x + 1][localIndex_y] - share_e[localIndex_x][localIndex_y]);
-		}
-
-		if (globalIndex_x < size && globalIndex_y < (size - 1)) {
-			hx[INDX(globalIndex_x, globalIndex_y, size)] = share_hx[localIndex_x][localIndex_y]
-			- 0.5 * (share_e[localIndex_x][localIndex_y + 1] - share_e[localIndex_x][localIndex_y]);
-		}
-
-		__syncthreads();
-
+__global__ void gpu_eh(const int size, const int x, const floatT t, const floatT sigma,
+	const int idx, const int idy, const int k,  floatT *e, floatT *hx, floatT *hy) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+	
+	if (i>=(size-1) || j>=(size-1)) { return; }
+	
+	__shared__ floatT s_e[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+1];
+	__shared__ floatT s_hx[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+2];
+	__shared__ floatT s_hy[THREADS_PER_BLOCK+2][THREADS_PER_BLOCK+1];
+	
+	s_e[threadIdx.x][threadIdx.y] = e[INDX(i,j,size)];
+	s_hx[threadIdx.x][threadIdx.y+1] = hx[INDX(i,j,size)];
+	s_hy[threadIdx.x+1][threadIdx.y] = hy[INDX(i,j,size-1)];
+	
+	// read in block from global memory
+	if (threadIdx.x==(THREADS_PER_BLOCK-1) || i==(size-2)) {
+		s_e[threadIdx.x+1][threadIdx.y] = e[INDX(i+1,j,size)];
+		s_hx[threadIdx.x+1][threadIdx.y+1] = hx[INDX(i+1,j,size)];
+		s_hy[threadIdx.x+2][threadIdx.y] = hy[INDX(i+1,j,size-1)];
 	}
+	if (threadIdx.y==(THREADS_PER_BLOCK-1) || j==(size-2)) {
+		s_e[threadIdx.x][threadIdx.y+1] = e[INDX(i,j+1,size)];
+		s_hx[threadIdx.x][threadIdx.y+2] = hx[INDX(i,j+1,size)];
+		s_hy[threadIdx.x+1][threadIdx.y+1] = hy[INDX(i,j+1,size-1)];
+	}
+	if (threadIdx.y==0 && j>0) {
+		s_hx[threadIdx.x+1][0] = hx[INDX(i,j-1,size)];
+	}
+	if (threadIdx.x==0 && i>0) {
+		s_hy[0][threadIdx.y+1] = hy[INDX(i-1,j,size-1)];
+	}
+	
+	// compute update in shared memory
+	if (i>0 && j>0) {
+		s_e[threadIdx.x][threadIdx.y] += (s_hy[threadIdx.x+1][threadIdx.y]-s_hy[threadIdx.x][threadIdx.y) 
+											- (s_hx[threadIdx.x][threadIdx.y+1]-s_hx[threadIdx.x][threadIdx.y]);
+		if (i==idx && j==idy) { s_e[threadIdx.x][threadIdx.y] -= FJ(k, x, t, sigma); }
+	}
+	s_hy[threadIdx.x+1][threadIdx.y] += 0.5*(s_e[threadIdx.x+1][threadIdx.y] - s_e[threadIdx.x][threadIdx.y]);
+	s_hx[threadIdx.x][threadIdx.y+1] -= 0.5*(s_e[threadIdx.x][threadIdx.y+1] - s_e[threadIdx.x][threadIdx.y]);
+	
+	// writing shared memory out
+	if (i>0 && j>0) {
+		e[INDX(i,j,size)] = s_e[threadIdx.x][threadIdx.y];
+	}
+	s_hy[INDX(i,j,size-1)] = s_hy[threadIdx.x+1][threadIdx.y];
+	s_hx[INDX(i,j,size)] = s_hx[threadIdx.x][threadIdx.y+1];
 }
 
-
-
-void host_fdtd(const int size, const int x, const double t, const double sigma,
-    const int idx, const int idy, const double e_0,
-	const int k_beg, const int k_end, double *e, double *hx, double *hy) {
+void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
+    const int idx, const int idy, const int k_beg, const int k_end, 
+    floatT *e, floatT *hx, floatT *hy) {
 	for (int k = k_beg; k <= k_end; k++) {
 		for (int i = 1; i < (size-1); i++) {
 			for (int j = 1; j < (size-1); j++) {
-				e[INDX(i, j, size)] = e[INDX(i, j, size)] + (hy[INDX(i, j, (size-1))] - hy[INDX(i-1, j, (size-1))])
+				e[INDX(i, j, size)] += (hy[INDX(i, j, (size-1))] - hy[INDX(i-1, j, (size-1))])
 				- (hx[INDX(i, j, size)] - hx[INDX(i, j-1, size)]);
 			}
 		}
-		e[INDX(idx, idy, size)] = e[INDX(idx, idy, size)] - t/e_0 * FJ(k, x, t, sigma);
+		e[INDX(idx, idy, size)] -= FJ(k, x, t, sigma);
 
 
 		for (int i = 0; i < (size-1); i++) {
 			for (int j = 0; j < size; j++) {
-				hy[INDX(i,j,(size-1))] = hy[INDX(i,j,(size-1))] + 0.5 * (e[INDX(i+1, j, size)] - e[INDX(i, j, size)]);
+				hy[INDX(i,j,(size-1))] += 0.5 * (e[INDX(i+1, j, size)] - e[INDX(i, j, size)]);
 			}
 		}
 
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < (size-1); j++) {
-				hx[INDX(i, j, size)] = hx[INDX(i, j, size)] - 0.5 * (e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
+				hx[INDX(i, j, size)] -= 0.5 * (e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
 			}
 		}
 	}
 }
 
 int main(int argc, char *argv[]) {
+	printf("fdtd_sync: GPU using implicit CPU sync\n" );
 	
-	// int hx = 40;
-	// double ht = (hx/sqrt(2.0)/(3 * pow(10, 8)));
- // 	double sigma = (2*pow(10, -5));
+	int dev;
+	cudaDeviceProp deviceProp;
+	checkCUDA( cudaGetDevice( &dev ) );
+	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
+	printf("Using GPU %d: %s\n", dev, deviceProp.name );
+	
+	floatT L = 1598.0;
+	floatT hx = 1.0;
+	floatT ht = hx/sqrt(2.0)/3;
+ 	floatT sigma = 200*ht;
 
-	// fprintf(stdout, "fj output is %f\n", FJ(500, hx, ht, sigma));
+	fprintf(stdout, "fj output is %f\n", FJ(500, hx, ht, sigma));
 
-	// int size = 21;
-	// int idx = 15; 
-	// int idy = 10;
-	// double e_0 = 8.85 * pow(10,-3);
+	int size = (int) L/hx+1;
+	int idx = (int) (0.625*L/hx)+1;
+	int idy = (int) (0.5*L/hx)+1;
+	fprintf(stdout, "size if %d, source is at idx=%d and idy=%d.\n", size, idx, idy);
 
-	int hx = 40;
-	double ht = (hx/sqrt(2.0)/(3 * pow(10, 8)));
- 	double sigma = (2*pow(10, -5));
-	int peak = int(sigma*4/ht);
-	fprintf(stdout, "fj output is %f at %d th timestep\n", FJ(peak, hx, ht, sigma),peak);
+	floatT *h_E, *h_Hx, *h_Hy;
 
-	int size = int(800/hx)+1;
-	int idx = int(600/hx); 
-	int idy = int(400/hx);
-	double e_0 = 8.85 * pow(10,-3);
+	size_t num_E = size * size;
+	size_t num_H = (size - 1)*size;	
+	size_t numbytes_E = num_E*sizeof(floatT);
+	size_t numbytes_H = num_H*sizeof(floatT);
+		
+	fprintf(stdout, "total memory allocated is %lu\n", numbytes_E+2*numbytes_H);
+	
+	clock_t t_begin, t_end;	
+	t_begin = clock();
+	h_E = (floatT *) calloc (num_E, sizeof(floatT));
+	h_Hx = (floatT *) calloc (num_H, sizeof(floatT));
+	h_Hy = (floatT *) calloc (num_H, sizeof(floatT));
 
-	double *h_E, *h_Hx, *h_Hy;
-
-	size_t numbytes_E = size * size * sizeof(double);
-	size_t numbytes_H = (size - 1) * size * sizeof(double);
-
-	h_E = (double *) malloc (numbytes_E);
-	h_Hx = (double *) malloc (numbytes_H);
-	h_Hy = (double *) malloc (numbytes_H);
-
-	for (int i = 0; i < size * size; i++) {
-		h_E[i] = 0.0;
-	}
-	h_E[INDX(idx, idy, size)] = - ht / e_0 * FJ(1, hx, ht, sigma);
-
-
-	fprintf(stdout, "%e\n", - ht / e_0 * FJ(1, hx, ht, sigma));
-
-
-	for (int i = 0; i < size * (size - 1); i++) {
-		h_Hx[i] = 0.0;
-		h_Hy[i] = 0.0;
-	}
+	h_E[INDX(idx, idy, size)] = - FJ(1, hx, ht, sigma);
 	
 	// GPU memory allocation and initialization
-	double *d_E, *d_Hx, *d_Hy, *d_E_out;
-	cudaMalloc( (void **) &d_E, numbytes_E );
-	cudaMalloc( (void **) &d_Hx, numbytes_H );
-	cudaMalloc( (void **) &d_Hy, numbytes_H );
-	cudaMemset(d_E, 0.0, numbytes_E);
-	cudaMemset(d_Hx, 0.0, numbytes_H);
-	cudaMemset(d_Hy, 0.0, numbytes_H);
+	floatT *d_E, *d_Hx, *d_Hy;
+	checkCUDA( cudaMalloc( (void **) &d_E, numbytes_E ) );
+	checkCUDA( cudaMalloc( (void **) &d_Hx, numbytes_H ) );
+	checkCUDA( cudaMalloc( (void **) &d_Hy, numbytes_H ) );
 
-	cudaMemcpy(d_E, h_E, numbytes_E, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_Hx, h_Hx, numbytes_H, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_Hy, h_Hy, numbytes_H, cudaMemcpyHostToDevice);
-
-	cudaMalloc( (void **) &d_E_out, numbytes_E );
-	cudaMemset(d_E_out, 0.0, numbytes_E);
+	checkCUDA( cudaMemcpy(d_E, h_E, numbytes_E, cudaMemcpyHostToDevice) );
+	checkCUDA( cudaMemset(d_Hx, 0, numbytes_H) );
+	checkCUDA( cudaMemset(d_Hy, 0, numbytes_H) );
+	
+	t_end = clock();
+	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
 	int k_beg = 2;
-	int k_end = 3;
-	// int k_end = floor(1.3 * pow(10, -4) / ht);
-	fprintf(stdout, "k end is %d\n", k_end);
-	clock_t begin = clock();
+	int k_end = 1500;
 	
-	host_fdtd(size, hx, ht, sigma, idx, idy, e_0, k_beg, k_end, h_E, h_Hx, h_Hy);
+	t_begin = clock();
+	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	FILE *fp;
+	fp = fopen("./cpu_E.f","rb");
+	fread(h_E,sizeof(floatT),num_E,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading E.\n");
 	
-	clock_t end = clock();
-	float cpuTime = (float)(end - begin) / CLOCKS_PER_SEC;
-	fprintf(stdout, "CPU time for %d elements was %f ms\n", size*size, cpuTime);	
+	fp = fopen("./cpu_Hx.f","rb");
+	fread(h_Hx,sizeof(floatT),num_H,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading Hx.\n");
 	
+	fp = fopen("./cpu_Hy.f","rb");
+	fread(h_Hy,sizeof(floatT),num_H,fp);
+	fclose(fp);
+	fprintf(stdout, "finish reading Hy.\n");
 	
-
-	dim3 threads( THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y, 1);
-	dim3 blocks( (size/threads.x)+1, (size/threads.x)+1, 1);
+	t_end = clock();
+	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
+	
+	// GPU execution
+	
+	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
+	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
+	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
 	cudaEvent_t start, stop;
-	cudaEventCreate( &start );
-	cudaEventCreate( &stop );
-	cudaEventRecord( start, 0 );
+	checkCUDA( cudaEventCreate( &start ) );
+    checkCUDA( cudaEventCreate( &stop ) );
+	checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* launch the kernel on the GPU */
-	gpu_fdtd_shmem<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, e_0, k_beg, k_end, d_E, d_Hx, d_Hy );
-
-	/* stop the timers */
-	cudaEventRecord( stop, 0 );
-	cudaEventSynchronize( stop );
-	float gpuTime;
-	cudaEventElapsedTime( &gpuTime, start, stop );
-
-	printf("GPU naive time for %d elements was %f ms\n", size*size, gpuTime );
-	
-	double *out_E, *out_Hx, *out_Hy;
-	out_E = (double *) malloc (numbytes_E);
-	out_Hx = (double *) malloc (numbytes_H);
-	out_Hy = (double *) malloc (numbytes_H);
-
-	cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost );
-	cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost );
-	cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost );
-
-	double th = 10E-12;
-	for( int i = 0; i < size - 1; i++ )	{
-		for ( int j = 0; j<size - 1; j++ ) {
-			if (abs(h_E[INDX(i,j,size)]) > th || abs(out_E[INDX(i,j,size)]) > th || abs(h_Hx[INDX(i,j,size)]) > th || abs(out_Hx[INDX(i,j,size)]) > th || abs(h_Hy[INDX(i,j,size)]) >th || abs(out_Hy[INDX(i,j,size)]) > th) {
-				printf("E: %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
-				printf("Hx: %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
-				printf("Hy: %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size)],out_Hy[INDX(i,j,size)] );
-			}
-			
-		}
+	for (int k=k_beg; k<=k_end; k++) {
+		gpu_eh<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy );
+		checkKERNEL();
 	}
+	
+	/* stop the timers */
+	checkCUDA( cudaEventRecord( stop, 0 ) );
+	checkCUDA( cudaEventSynchronize( stop ) );
+	float gpuTime;
+	checkCUDA( cudaEventElapsedTime( &gpuTime, start, stop ) );
+
+	printf("GPU naive calculation time %f ms\n", gpuTime );
+	
+	floatT *out_E, *out_Hx, *out_Hy;
+	out_E = (floatT *) malloc (numbytes_E);
+	out_Hx = (floatT *) malloc (numbytes_H);
+	out_Hy = (floatT *) malloc (numbytes_H);
+
+	checkCUDA( cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost ) );
+	checkCUDA( cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost ) );
+	checkCUDA( cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost ) );
 
 	int success = 1;
-	double diff, thresh=1e-14;
+	floatT diff, thresh=1e-6;
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
-			diff = h_E[INDX(i,j,size)]- out_E[INDX(i,j,size)];
-			if ( diff>thresh || diff<-thresh ) {
-				printf("error in element %d, %d: CPU %f vs GPU %f\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
+			diff = abs(1.0-out_E[INDX(i,j,size)]/h_E[INDX(i,j,size)]);
+			if ( diff>thresh ) {
+				printf("error in E element %d, %d: CPU %e vs GPU %e\n",i,j,h_E[INDX(i,j,size)],out_E[INDX(i,j,size)] );
 				success = 0;
 				break;
-			} /* end if */
+			}
 		}
-	} /* end for */
+	} 
 
+	for( int i = 0; i < size; i++ )	{
+		for ( int j = 0; j<size-1; j++ ) {
+			diff = abs(1.0-out_Hx[INDX(i,j,size)]/h_Hx[INDX(i,j,size)]);
+			if ( diff>thresh ) {
+				printf("error in Hx element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hx[INDX(i,j,size)],out_Hx[INDX(i,j,size)] );
+				success = 0;
+				break;
+			} 
+		}
+	} 
+	
+	for( int i = 0; i < size-1; i++ )	{
+		for ( int j = 0; j<size; j++ ) {
+			diff = abs(1.0-out_Hy[INDX(i,j,size-1)]/h_Hy[INDX(i,j,size-1)]);
+			if ( diff>thresh) {
+				printf("error in Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size-1)],out_Hy[INDX(i,j,size-1)] );
+				success = 0;
+				break;
+			} 
+		}
+	} 
+
+	
 	if( success == 1 ) printf("PASS\n");
 	else               printf("FAIL\n");
 
 	free(h_E);
 	free(h_Hx);
 	free(h_Hy);	
-	free(out_E);	
+	free(out_E);
 	free(out_Hx);
 	free(out_Hy);
-	cudaFree( d_E );
-	cudaFree( d_Hx );
-	cudaFree( d_Hy );
+	checkCUDA( cudaFree( d_E ) );
+	checkCUDA( cudaFree( d_Hx ) );
+	checkCUDA( cudaFree( d_Hy ) );
 
-	cudaDeviceSynchronize();
+	checkCUDA( cudaDeviceSynchronize() );
 	
 	return 0;
 }
