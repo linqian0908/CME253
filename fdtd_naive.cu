@@ -178,9 +178,9 @@ int main(int argc, char *argv[]) {
 	
 	for( int i = 0; i < size-1; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
-			diff = abs(1.0-out_Hy[INDX(i,j,size)]/h_Hy[INDX(i,j,size)]);
+			diff = abs(1.0-out_Hy[INDX(i,j,size-1)]/h_Hy[INDX(i,j,size-1)]);
 			if ( diff>thresh) {
-				printf("error in Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size)],out_Hy[INDX(i,j,size)] );
+				printf("error in Hy element %d, %d: CPU %e vs GPU %e\n",i,j,h_Hy[INDX(i,j,size-1)],out_Hy[INDX(i,j,size-1)] );
 				success = 0;
 				break;
 			} 
