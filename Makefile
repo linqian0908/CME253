@@ -21,8 +21,8 @@ FILE=fdtd_sync
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
-x.${FILE}: ${FILE}.o
-	$(NVCC) $(ARCH) -o x.${FILE} ${FILE}.o
+x.fdtd: ${FILE}.o
+	$(NVCC) $(ARCH) -o x.fdtd ${FILE}.o
 
 ${FILE}.o: ${FILE}.cu
 	$(NVCC) $(ARCH) -c ${FILE}.cu 
