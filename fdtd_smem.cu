@@ -19,32 +19,42 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 	__shared__ floatT s_hx[THREADS_PER_BLOCK+1][THREADS_PER_BLOCK+2];
 	__shared__ floatT s_hy[THREADS_PER_BLOCK+2][THREADS_PER_BLOCK+1];
 	
+	// read interior data for each threadblock from global memory
 	s_e[threadIdx.x][threadIdx.y] = e[INDX(i,j,size)];
 	s_hx[threadIdx.x][threadIdx.y+1] = hx[INDX(i,j,size)];
 	s_hy[threadIdx.x+1][threadIdx.y] = hy[INDX(i,j,size-1)];
 	
-	// read in block from global memory
-	if (threadIdx.x==(THREADS_PER_BLOCK-1) || i==(size-2)) {
+	// read boundary data for each threadblock necesary for updating interior data
+	if (threadIdx.x==(THREADS_PER_BLOCK-1) || i==(size-2)) { //top
 		s_e[threadIdx.x+1][threadIdx.y] = e[INDX(i+1,j,size)];
 		s_hx[threadIdx.x+1][threadIdx.y+1] = hx[INDX(i+1,j,size)];
 		s_hy[threadIdx.x+2][threadIdx.y] = hy[INDX(i+1,j,size-1)];
 	}
-	if (threadIdx.y==(THREADS_PER_BLOCK-1) || j==(size-2)) {
+	if (threadIdx.y==(THREADS_PER_BLOCK-1) || j==(size-2)) { //right
 		s_e[threadIdx.x][threadIdx.y+1] = e[INDX(i,j+1,size)];
 		s_hx[threadIdx.x][threadIdx.y+2] = hx[INDX(i,j+1,size)];
 		s_hy[threadIdx.x+1][threadIdx.y+1] = hy[INDX(i,j+1,size-1)];
 	}
-	if (threadIdx.y==0 && j>0) {
+	if (threadIdx.y==0 && j>0) { // left
 		s_hx[threadIdx.x][0] = hx[INDX(i,j-1,size)];
 	}
-	if (threadIdx.x==0 && i>0) {
+	if (threadIdx.x==0 && i>0) { // bottom
 		s_hy[0][threadIdx.y] = hy[INDX(i-1,j,size-1)];
 	}
+	__syncthreads();
 	
 	// compute update in shared memory
 	if (i>0 && j>0) {
 		s_e[threadIdx.x][threadIdx.y] += (s_hy[threadIdx.x+1][threadIdx.y]-s_hy[threadIdx.x][threadIdx.y]) 
-											- (s_hx[threadIdx.x][threadIdx.y+1]-s_hx[threadIdx.x][threadIdx.y]);
+						- (s_hx[threadIdx.x][threadIdx.y+1]-s_hx[threadIdx.x][threadIdx.y]);
+		if (threadIdx.x==(THREADS_PER_BLOCK-1) || i==(size-2)) {
+			s_e[threadIdx.x+1][threadIdx.y] += (s_hy[threadIdx.x+2][threadIdx.y]-s_hy[threadIdx.x+1][threadIdx.y])
+						- (s_hx[threadIdx.x+1][threadIdx.y+1]-s_hx[threadIdx.x+1][threadIdx.y]);
+		}			
+		if (threadIdx.y==(THREADS_PER_BLOCK-1) || j==(size-2)) {
+			s_e[threadIdx.x][threadIdx.y+1] += (s_hy[threadIdx.x+1][threadIdx.y+1]-s_hy[threadIdx.x][threadIdx.y+1])
+						- (s_hx[threadIdx.x][threadIdx.y+2]-s_hx[threadIdx.x][threadIdx.y+1]);
+		}		
 		if (i==idx && j==idy) { s_e[threadIdx.x][threadIdx.y] -= FJ(k, x, t, sigma); }
 	}
 	s_hy[threadIdx.x+1][threadIdx.y] += 0.5*(s_e[threadIdx.x+1][threadIdx.y] - s_e[threadIdx.x][threadIdx.y]);
