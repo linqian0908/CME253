@@ -43,7 +43,7 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 	
 	// compute update in shared memory
 	if (i>0 && j>0) {
-		s_e[threadIdx.x][threadIdx.y] += (s_hy[threadIdx.x+1][threadIdx.y]-s_hy[threadIdx.x][threadIdx.y) 
+		s_e[threadIdx.x][threadIdx.y] += (s_hy[threadIdx.x+1][threadIdx.y]-s_hy[threadIdx.x][threadIdx.y]) 
 											- (s_hx[threadIdx.x][threadIdx.y+1]-s_hx[threadIdx.x][threadIdx.y]);
 		if (i==idx && j==idy) { s_e[threadIdx.x][threadIdx.y] -= FJ(k, x, t, sigma); }
 	}
@@ -54,8 +54,8 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 	if (i>0 && j>0) {
 		e[INDX(i,j,size)] = s_e[threadIdx.x][threadIdx.y];
 	}
-	s_hy[INDX(i,j,size-1)] = s_hy[threadIdx.x+1][threadIdx.y];
-	s_hx[INDX(i,j,size)] = s_hx[threadIdx.x][threadIdx.y+1];
+	hy[INDX(i,j,size-1)] = s_hy[threadIdx.x+1][threadIdx.y];
+	hx[INDX(i,j,size)] = s_hx[threadIdx.x][threadIdx.y+1];
 }
 
 void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
@@ -86,7 +86,7 @@ void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,
 }
 
 int main(int argc, char *argv[]) {
-	printf("fdtd_sync: GPU using implicit CPU sync\n" );
+	printf("fdtd_sync: GPU using share memory for both E and H (fdtd_smem).\n" );
 	
 	int dev;
 	cudaDeviceProp deviceProp;

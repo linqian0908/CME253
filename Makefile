@@ -17,14 +17,15 @@
 ARCH=-arch sm_30
 CUB_INCLUDE=../../../../cub-1.4.1
 NVCC=nvcc
+FILE=fdtd_smem
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
-x.fdtd_sync_smem: fdtd_sync_smem.o
-	$(NVCC) $(ARCH) -o x.fdtd_sync_smem fdtd_sync_smem.o
+x.${FILE}: ${FILE}.o
+	$(NVCC) $(ARCH) -o x.${FILE} ${FILE}.o
 
-fdtd_sync_smem.o: fdtd_sync_smem.cu
-	$(NVCC) $(ARCH) -c fdtd_sync_smem.cu 
+${FILE}.o: ${FILE}.cu
+	$(NVCC) $(ARCH) -c ${FILE}.cu 
 	
-#clean:
-#	rm -rf fdtd_cpu.o x.fdtd_cpu
+clean:
+	rm -rf *.o x.*
