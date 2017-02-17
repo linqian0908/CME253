@@ -4,6 +4,8 @@
 #include <time.h>
 #include "headers.h"
 
+/* macro to index a 1D memory array with 2D indices in column-major order */
+#define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 32
 typedef float floatT;
@@ -141,7 +143,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 799; //1598.0;
+	floatT L = 799.0; //1598.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;

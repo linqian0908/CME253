@@ -4,6 +4,8 @@
 #include <time.h>
 #include "headers.h"
 
+/* macro to index a 1D memory array with 2D indices in column-major order */
+#define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 32
 typedef float floatT;
