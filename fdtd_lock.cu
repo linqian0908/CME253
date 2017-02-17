@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 158.0;
+	floatT L = 1598.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
@@ -119,10 +119,10 @@ int main(int argc, char *argv[]) {
 	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
 	int k_beg = 2;
-	int k_end = 15;
+	int k_end = 1500;
 	
 	t_begin = clock();
-	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
 	
 	FILE *fp;
 	fp = fopen("./cpu_E.f","rb");
