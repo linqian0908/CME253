@@ -89,6 +89,7 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 		}		
 		if (i==idx && j==idy) { s_e[threadIdx.x][threadIdx.y] -= FJ(k, x, t, sigma); }
 	}
+	__syncthreads();
 	s_hx[threadIdx.x][threadIdx.y+1] -= 0.5*(s_e[threadIdx.x][threadIdx.y+1] - s_e[threadIdx.x][threadIdx.y]);
 	s_hy[threadIdx.x+1][threadIdx.y] += 0.5*(s_e[threadIdx.x+1][threadIdx.y] - s_e[threadIdx.x][threadIdx.y]);
 	
@@ -140,8 +141,8 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 200.0;//1598.0;
-	floatT hx = 10.0;
+	floatT L = 799; //1598.0;
+	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
 	int size = (int) L/hx+1;
 	int idx = (int) (0.625*L/hx)+1;
 	int idy = (int) (0.5*L/hx)+1;
-	fprintf(stdout, "size if %d, source is at idx=%d and idy=%d.\n", size, idx, idy);
+	fprintf(stdout, "size is %d, source is at idx=%d and idy=%d.\n", size, idx, idy);
 
 	floatT *h_E, *h_Hx, *h_Hy;
 
@@ -167,7 +168,7 @@ int main(int argc, char *argv[]) {
 	h_Hx = (floatT *) calloc (num_H, sizeof(floatT));
 	h_Hy = (floatT *) calloc (num_H, sizeof(floatT));
 
-	h_E[INDX(idx, idy, size)] = - FJ(500, hx, ht, sigma);
+	h_E[INDX(idx, idy, size)] = - FJ(1, hx, ht, sigma);
 	
 	// GPU memory allocation and initialization
 	floatT *d_E, *d_Hx, *d_Hy;
@@ -182,8 +183,8 @@ int main(int argc, char *argv[]) {
 	t_end = clock();
 	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
-	int k_beg = 501;
-	int k_end = 501; //1500;
+	int k_beg = 2;
+	int k_end = 1500;
 	
 	t_begin = clock();
 	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
@@ -210,7 +211,7 @@ int main(int argc, char *argv[]) {
 	// GPU execution
 	
 	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
-	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
+	dim3 blocks( ((size-1)/threads.x)+1, ((size-1)/threads.y)+1, 1);
 	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
@@ -241,7 +242,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaMemcpy( out_E, d_E, numbytes_E, cudaMemcpyDeviceToHost ) );
 	checkCUDA( cudaMemcpy( out_Hx, d_Hx, numbytes_H, cudaMemcpyDeviceToHost ) );
 	checkCUDA( cudaMemcpy( out_Hy, d_Hy, numbytes_H, cudaMemcpyDeviceToHost ) );
-	
+	/*
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
 			if (abs(h_E[INDX(i,j,size)])>0 || abs(out_E[INDX(i,j,size)])>0) {
@@ -265,8 +266,8 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	} 
-
-/*	int success = 1;
+	*/
+	int success = 1;
 	floatT diff, thresh=1e-6;
 	for( int i = 0; i < size; i++ )	{
 		for ( int j = 0; j<size; j++ ) {
@@ -303,7 +304,7 @@ int main(int argc, char *argv[]) {
 
 	
 	if( success == 1 ) printf("PASS\n");
-	else               printf("FAIL\n");*/
+	else               printf("FAIL\n");
 
 	free(h_E);
 	free(h_Hx);

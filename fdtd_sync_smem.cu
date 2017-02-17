@@ -150,13 +150,13 @@ int main(int argc, char *argv[]) {
 	// GPU execution
 	
 	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
-	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
+	dim3 blocks( ((size-1)/threads.x)+1, ((size-1)/threads.y)+1, 1);
 	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
 	cudaEvent_t start, stop;
 	checkCUDA( cudaEventCreate( &start ) );
-    checkCUDA( cudaEventCreate( &stop ) );
+	checkCUDA( cudaEventCreate( &stop ) );
 	checkCUDA( cudaEventRecord( start, 0 ) );
 
 	/* launch the kernel on the GPU */

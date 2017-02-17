@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaGetDeviceProperties( &deviceProp, dev ) );
 	printf("Using GPU %d: %s\n", dev, deviceProp.name );
 	
-	floatT L = 1598.0;
+	floatT L = 799.0;//1598.0;
 	floatT hx = 1.0;
 	floatT ht = hx/sqrt(2.0)/3;
  	floatT sigma = 200*ht;
@@ -113,7 +113,8 @@ int main(int argc, char *argv[]) {
 	int k_end = 1500;
 	
 	t_begin = clock();
-	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	/*
 	FILE *fp;
 	fp = fopen("./cpu_E.f","rb");
 	fread(h_E,sizeof(floatT),num_E,fp);
@@ -129,14 +130,14 @@ int main(int argc, char *argv[]) {
 	fread(h_Hy,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish reading Hy.\n");
-	
+	*/
 	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	
 	// GPU execution
 	
 	dim3 threads( THREADS_PER_BLOCK, THREADS_PER_BLOCK, 1);
-	dim3 blocks( (size/threads.x)+1, (size/threads.y)+1, 1);
+	dim3 blocks( ((size-1)/threads.x)+1, ((size-1)/threads.y)+1, 1);
 	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */

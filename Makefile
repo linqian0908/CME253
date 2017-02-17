@@ -17,7 +17,7 @@
 ARCH=-arch sm_30
 CUB_INCLUDE=../../../../cub-1.4.1
 NVCC=nvcc
-FILE=fdtd_smem
+FILE=fdtd_sync
 
 #gcc fdtd_cpu.c -o -lm fdtd_cpu
 
