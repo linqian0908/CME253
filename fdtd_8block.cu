@@ -11,14 +11,27 @@
 #define N_BLOCKS 8 
 typedef float floatT;
 
+__device__ uint get_smid(void) {
+
+     uint ret;
+
+     asm("mov.u32 %0, %smid;" : "=r"(ret) );
+
+     return ret;
+
+}
+    
 __global__ void gpu_e(const int size, const int x, const floatT t, const floatT sigma,
-	const int idx, const int idy, const int k,  floatT *e, floatT *hx, floatT *hy) {
+	const int idx, const int idy, const int k,  floatT *e, floatT *hx, floatT *hy,
+	uint* smid) {
 	__shared__ char dummy[40000];
 	int i_base = threadIdx.x;
 	int chunk = (size-1)/gridDim.x+1;
 	int j_base = blockIdx.x*chunk;
 	//int j_base = blockIdx.x;
-
+	if (threadIdx.x==0) {
+		smid[blockIdx.x] = get_smid();
+	}
 	for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
 	//for (int j = j_base; j<(size-1); j+=gridDim.x) {
 		for (int i = i_base; i<(size-1); i+=blockDim.x) {
@@ -121,6 +134,11 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaMemset(d_Hx, 0, numbytes_H) );
 	checkCUDA( cudaMemset(d_Hy, 0, numbytes_H) );
 	
+	uint *h_smid, *d_smid;
+	h_smid = (uint *) malloc (N_BLOCKS*sizeof(uint));
+	checkCUDA( cudaMalloc( (void **) &d_smid, N_BLOCKS*sizeof(uint)) );
+	checkCUDA( cudaMemset(d_smid, 0, N_BLOCKS*sizeof(uint)) );
+	
 	t_end = clock();
 	fprintf(stdout, "Memory allocation time is %f s\n", (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 
@@ -164,7 +182,7 @@ int main(int argc, char *argv[]) {
 	/* launch the kernel on the GPU */
 	for (int k=k_beg; k<=k_end; k++) {
 		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy );
-		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy );
+		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy, d_smid );
 		checkKERNEL();
 	}
 	
@@ -175,6 +193,13 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaEventElapsedTime( &gpuTime, start, stop ) );
 
 	printf("GPU naive calculation time %f ms\n", gpuTime );
+	
+	checkCUDA( cudaMemcpy(h_smid, d_smid, N_BLOCKS*sizeof(uint), cudaMemcpyDeviceToHost) );
+	printf("SMID: ");
+	for (int i=0; i<N_BLOCKS; i++) {
+		printf("%d, ", h_smid[i]);
+	}
+	printf("\n");
 	
 	floatT *out_E, *out_Hx, *out_Hy;
 	out_E = (floatT *) malloc (numbytes_E);
