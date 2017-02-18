@@ -8,7 +8,7 @@
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 1024
-#define N_BLOCKS 8
+#define N_BLOCKS 8 
 typedef float floatT;
 
 __global__ void gpu_e(const int size, const int x, const floatT t, const floatT sigma,
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
 	// GPU execution
 	
 	dim3 threads( min(THREADS_PER_BLOCK,size), 1, 1);
-	dim3 blocks( 8, 1, 1);
+	dim3 blocks( N_BLOCKS, 1, 1);
 	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
