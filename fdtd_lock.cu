@@ -8,16 +8,15 @@
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 1024
-#define N_BLOCKS 1
+#define N_BLOCKS 8
 typedef float floatT;
 
 __device__ int g_mutex;
 
-__device__ void __gpu_sync() {
-	int a;
+__device__ void __gpu_sync(int goalVal) {
 	if (threadIdx.x==0) {
 		atomicAdd(&g_mutex,1);
-		while (g_mutex!=N_BLOCKS) { a=N_BLOCKS; }
+		while (g_mutex<goalVal) { }
 	}
 	__syncthreads();
 }
@@ -40,15 +39,17 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 				}
 			}
 		}
-		
+		__gpu_sync( ((k-k_beg)*2+1) * N_BLOCKS );
+
 		for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
 			for (int i = i_base; i<(size-1); i+=blockDim.x) {
 				hy[INDX(i,j,size-1)] += 0.5*(e[INDX(i+1,j,size)]-e[INDX(i,j,size)]);
 				hx[INDX(i, j, size)] -= 0.5*(e[INDX(i, j+1, size)] - e[INDX(i, j, size)]);
 			}
 		}
-		__gpu_sync();
+		__gpu_sync( ((k-k_beg)*2+2) * N_BLOCKS );
 	}
+
 }
 
 void host_fdtd(const int size, const int x, const floatT t, const floatT sigma,

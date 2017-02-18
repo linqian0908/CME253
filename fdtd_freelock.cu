@@ -155,11 +155,11 @@ int main(int argc, char *argv[]) {
 	checkCUDA( cudaMemset(d_lockOut, 0,  N_BLOCKS*sizeof(int)) );
 	
 	int k_beg = 2;
-	int k_end = 1500;
+	int k_end = 3;//1500;
 	
 	t_begin = clock();
-	//host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
-	
+	host_fdtd(size, hx, ht, sigma, idx, idy, k_beg, k_end, h_E, h_Hx, h_Hy);
+	/*
 	FILE *fp;
 	fp = fopen("./cpu_E.f","rb");
 	fread(h_E,sizeof(floatT),num_E,fp);
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
 	fread(h_Hy,sizeof(floatT),num_H,fp);
 	fclose(fp);
 	fprintf(stdout, "finish reading Hy.\n");
-	
+	*/
 	t_end = clock();
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	

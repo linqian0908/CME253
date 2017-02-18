@@ -8,7 +8,7 @@
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 1024
-#define N_BLOCKS 8 
+#define N_BLOCKS 1 
 typedef float floatT;
 
 __device__ uint get_smid(void) {
@@ -181,8 +181,8 @@ int main(int argc, char *argv[]) {
 
 	/* launch the kernel on the GPU */
 	for (int k=k_beg; k<=k_end; k++) {
-		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy );
-		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy, d_smid );
+		gpu_e<<< blocks, threads >>>( size, hx, ht, sigma, idx, idy, k, d_E, d_Hx, d_Hy, d_smid );
+		gpu_h<<< blocks, threads >>>( size, d_E, d_Hx, d_Hy);
 		checkKERNEL();
 	}
 	
