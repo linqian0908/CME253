@@ -8,7 +8,7 @@
 #define INDX( row, col, ld ) ( ( (col) * (ld) ) + (row) )
 // GPU macro
 #define THREADS_PER_BLOCK 1024
-#define N_BLOCKS 8
+#define N_BLOCKS 1
 typedef float floatT;
 
 __device__ int g_mutex;
@@ -25,7 +25,6 @@ __device__ void __gpu_sync() {
 __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT sigma,
 	const int idx, const int idy, const int k_beg, int k_end,  floatT *e, floatT *hx, floatT *hy) {
 	__shared__ char dummy[40000];
-	__device__ int g_mutex;
 	
 	int i_base = threadIdx.x;
 	int chunk = (size-1)/gridDim.x+1;
@@ -41,7 +40,6 @@ __global__ void gpu_eh(const int size, const int x, const floatT t, const floatT
 				}
 			}
 		}
-		__gpu_sync();
 		
 		for (int j = j_base; j<min(size-1,j_base+chunk); j+=1) {
 			for (int i = i_base; i<(size-1); i+=blockDim.x) {
@@ -157,9 +155,11 @@ int main(int argc, char *argv[]) {
 	fprintf(stdout, "CPU calculation time for %d iteration is %f s\n", k_end, (float)(t_end - t_begin) / CLOCKS_PER_SEC);
 	
 	// GPU execution
+	int h_mutex = 0;
+	checkCUDA( cudaMemcpyToSymbol(g_mutex, &h_mutex,sizeof(int),0,cudaMemcpyHostToDevice) );
 	
 	dim3 threads( min(THREADS_PER_BLOCK,size), 1, 1);
-	dim3 blocks( 8, 1, 1);
+	dim3 blocks( N_BLOCKS, 1, 1);
 	fprintf(stdout, "block size is %d by %d.\n", blocks.x, blocks.y);
 
 	/* GPU timer */
@@ -180,8 +180,10 @@ int main(int argc, char *argv[]) {
 	float gpuTime;
 	checkCUDA( cudaEventElapsedTime( &gpuTime, start, stop ) );
 
-	printf("GPU naive calculation time %f ms\n", gpuTime );
-	
+	fprintf(stdout, "GPU calculation time %f ms\n", gpuTime );
+	checkCUDA( cudaMemcpyFromSymbol(&h_mutex, g_mutex, sizeof(int),0, cudaMemcpyDeviceToHost) );
+	fprintf(stdout, "mutex value %d\n", h_mutex);
+
 	floatT *out_E, *out_Hx, *out_Hy;
 	out_E = (floatT *) malloc (numbytes_E);
 	out_Hx = (floatT *) malloc (numbytes_H);
